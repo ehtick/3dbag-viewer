@@ -191,6 +191,7 @@ export default {
 		this.customLayer = null;
 		this.renderer = null;
 		this.scene = null;
+		this.markerScene = null;
 		this.camera = null;
 		this.renderCamera = null;
 		this.tiles = null;
@@ -508,6 +509,7 @@ export default {
 			this.renderer.toneMappingExposure = this.exposure;
 
 			this.scene = new Scene();
+			this.markerScene = new Scene();
 			this.fog = new FogExp2( this.fogColor, this.fogDensity );
 			this.camera = new PerspectiveCamera();
 			this.camera.matrixAutoUpdate = false;
@@ -612,6 +614,9 @@ export default {
 			this.scene.fog = this.enableFog ? this.fog : null;
 			this.renderer.resetState();
 			this.renderer.render( this.scene, this.renderCamera );
+			// Sprites need the split view and projection matrices to keep a
+			// constant screen size; the map's combined matrix makes them microscopic.
+			this.renderer.render( this.markerScene, this.camera );
 			this.renderer.resetState();
 
 		},
@@ -1110,7 +1115,7 @@ export default {
 			sprite.userData.height = 0;
 			sprite.scale.set( 0.04, 0.10, 1 );
 			sprite.name = this.markerName;
-			this.scene.add( sprite );
+			this.markerScene.add( sprite );
 			this.updateMarkerPosition();
 			this.queueMarkerHeightCorrection();
 			this.requestRender();
@@ -1118,7 +1123,7 @@ export default {
 		},
 		updateMarkerPosition() {
 
-			const marker = this.scene && this.scene.getObjectByName( this.markerName );
+			const marker = this.markerScene && this.markerScene.getObjectByName( this.markerName );
 			const tilesFrame = this.getTilesFrame();
 			if ( ! marker || ! tilesFrame ) return;
 			marker.position.copy( getWorldFrame(
@@ -1132,14 +1137,14 @@ export default {
 		},
 		queueMarkerHeightCorrection() {
 
-			if ( ! this.scene || ! this.scene.getObjectByName( this.markerName ) ) return;
+			if ( ! this.markerScene || ! this.markerScene.getObjectByName( this.markerName ) ) return;
 			this.markerHeightNeedsUpdate = true;
 			this.requestRender();
 
 		},
 		correctMarkerHeight() {
 
-			const marker = this.scene && this.scene.getObjectByName( this.markerName );
+			const marker = this.markerScene && this.markerScene.getObjectByName( this.markerName );
 			const tilesFrame = this.getTilesFrame();
 			if ( ! marker || ! tilesFrame ) return false;
 			const { lat, lon } = marker.userData;
@@ -1179,10 +1184,10 @@ export default {
 		removeMarker() {
 
 			this.markerHeightNeedsUpdate = false;
-			if ( ! this.scene ) return;
-			const marker = this.scene.getObjectByName( this.markerName );
+			if ( ! this.markerScene ) return;
+			const marker = this.markerScene.getObjectByName( this.markerName );
 			if ( ! marker ) return;
-			this.scene.remove( marker );
+			this.markerScene.remove( marker );
 			if ( marker.material.map ) marker.material.map.dispose();
 			marker.material.dispose();
 
@@ -1443,7 +1448,7 @@ export default {
 			this.mouse.y = - ( ( clientY - rect.top ) / rect.height ) * 2 + 1;
 			this.raycaster.setFromCamera( this.mouse, this.camera );
 
-			const marker = this.scene.getObjectByName( this.markerName );
+			const marker = this.markerScene.getObjectByName( this.markerName );
 			if ( marker ) {
 
 				const markerResults = this.raycaster.intersectObject( marker, true );
@@ -1625,6 +1630,7 @@ export default {
 			this.map = null;
 			this.renderer = null;
 			this.scene = null;
+			this.markerScene = null;
 			this.renderCamera = null;
 			this.tiles = null;
 
